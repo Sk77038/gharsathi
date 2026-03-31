@@ -1,0 +1,5 @@
+{
+  "name": "Ghar Sathi",
+  "description": "Hyperlocal service and workforce marketplace like Urban Company + Uber",
+  "requestFramePermissions": ["geolocation"]
+}
