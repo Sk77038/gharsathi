@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Smartphone, User, Briefcase, MapPin, Search, Star, Clock, Home, Calendar, MessageSquare, Menu, Bell, ChevronLeft, ShieldCheck, Zap, Users } from 'lucide-react';
+import { Smartphone, User, Briefcase, MapPin, Search, Star, Clock, Home, Calendar, MessageSquare, Menu, Bell, ChevronLeft, ShieldCheck, Zap, Users, LogOut } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 // --- Mock Data ---
@@ -85,6 +85,10 @@ export default function AppSimulator() {
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone) return;
+    if (phone.length < 10) {
+      setAuthError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
     setAuthError(null);
     
     // If no Supabase keys, simulate login
@@ -109,6 +113,10 @@ export default function AppSimulator() {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otp) return;
+    if (otp.length < 6) {
+      setAuthError('Please enter a valid 6-digit OTP.');
+      return;
+    }
     setAuthError(null);
 
     // Simulate login if no keys
@@ -177,7 +185,7 @@ export default function AppSimulator() {
         </div>
 
         {/* App Content */}
-        <div className="flex-1 overflow-y-auto bg-slate-50 pt-8 pb-20 relative">
+        <div className="flex-1 overflow-y-auto bg-slate-50 pt-8 relative">
           <AnimatePresence mode="wait">
             {!session ? (
               <AuthScreen 
@@ -375,6 +383,16 @@ function CustomerApp({ onLogout }: { onLogout: () => void; key?: string }) {
   const [showJobForm, setShowJobForm] = useState(false);
   const [jobDetails, setJobDetails] = useState({ title: '', budget: '' });
   const [jobStatus, setJobStatus] = useState<{type: 'error'|'success', msg: string} | null>(null);
+  const [bookingStatus, setBookingStatus] = useState<{type: 'error'|'success', msg: string} | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  const handleCategoryClick = (serviceName: string) => {
+    setJobDetails({ title: serviceName, budget: '' });
+    setShowJobForm(true);
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  };
 
   const handlePostJob = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -425,7 +443,7 @@ function CustomerApp({ onLogout }: { onLogout: () => void; key?: string }) {
   };
 
   const handleBookWorker = async (worker: any) => {
-    setJobStatus(null);
+    setBookingStatus(null);
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     if (supabaseUrl && supabaseUrl !== 'https://placeholder.supabase.co') {
       try {
@@ -448,22 +466,22 @@ function CustomerApp({ onLogout }: { onLogout: () => void; key?: string }) {
           throw error;
         }
         
-        setJobStatus({ type: 'success', msg: `Successfully booked ${worker.name}!` });
-        setTimeout(() => setJobStatus(null), 3000);
+        setBookingStatus({ type: 'success', msg: `Successfully booked ${worker.name}!` });
+        setTimeout(() => setBookingStatus(null), 3000);
       } catch (err: any) {
         const msg = err.message === 'Failed to fetch' 
           ? 'Failed to connect to Supabase. Please check your Supabase URL and Anon Key in the .env file.' 
           : err.message || 'Failed to book worker.';
-        setJobStatus({ type: 'error', msg });
+        setBookingStatus({ type: 'error', msg });
       }
     } else {
-      setJobStatus({ type: 'success', msg: `Successfully booked ${worker.name}! (Demo Mode)` });
-      setTimeout(() => setJobStatus(null), 3000);
+      setBookingStatus({ type: 'success', msg: `Successfully booked ${worker.name}! (Demo Mode)` });
+      setTimeout(() => setBookingStatus(null), 3000);
     }
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col relative">
       {/* Header */}
       <div className="bg-blue-600 text-white p-6 pb-8 rounded-b-3xl shadow-md relative z-10">
         <div className="flex justify-between items-center mb-6">
@@ -475,7 +493,7 @@ function CustomerApp({ onLogout }: { onLogout: () => void; key?: string }) {
             </div>
           </div>
           <button onClick={onLogout} className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors">
-            <User className="w-5 h-5" />
+            <LogOut className="w-5 h-5" />
           </button>
         </div>
         
@@ -491,7 +509,7 @@ function CustomerApp({ onLogout }: { onLogout: () => void; key?: string }) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 -mt-4 pt-8">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 -mt-4 pt-8 pb-24">
         {activeTab === 'home' ? (
           <>
             {/* AI Banner */}
@@ -512,10 +530,7 @@ function CustomerApp({ onLogout }: { onLogout: () => void; key?: string }) {
                 {MOCK_SERVICES.map(service => (
                   <button 
                     key={service.id} 
-                    onClick={() => {
-                      setJobDetails({ title: service.name, budget: '' });
-                      setShowJobForm(true);
-                    }}
+                    onClick={() => handleCategoryClick(service.name)}
                     className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity"
                   >
                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm ${service.color}`}>
@@ -528,7 +543,7 @@ function CustomerApp({ onLogout }: { onLogout: () => void; key?: string }) {
             </div>
 
             {/* Custom Job Post */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+            <div ref={formRef} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
               {!showJobForm ? (
                 <div className="flex justify-between items-center">
                   <div>
@@ -582,12 +597,12 @@ function CustomerApp({ onLogout }: { onLogout: () => void; key?: string }) {
             <div>
               <div className="flex justify-between items-end mb-4">
                 <h3 className="font-bold text-slate-800 text-lg">Top Rated Nearby</h3>
-                <span className="text-blue-600 text-xs font-bold">See All</span>
+                <button onClick={() => setBookingStatus({ type: 'success', msg: 'See All coming soon!' })} className="text-blue-600 text-xs font-bold hover:text-blue-700 transition-colors">See All</button>
               </div>
               
-              {!showJobForm && jobStatus && (
-                <div className={`mb-4 p-3 rounded-xl text-sm font-medium ${jobStatus.type === 'error' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
-                  {jobStatus.msg}
+              {bookingStatus && (
+                <div className={`mb-4 p-3 rounded-xl text-sm font-medium ${bookingStatus.type === 'error' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
+                  {bookingStatus.msg}
                 </div>
               )}
 
@@ -737,7 +752,7 @@ function WorkerApp({ onLogout }: { onLogout: () => void; key?: string }) {
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col bg-slate-50">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col bg-slate-50 relative">
       {/* Header */}
       <div className="bg-white p-6 pb-4 border-b border-slate-100 flex justify-between items-center sticky top-0 z-20">
         <div className="flex items-center gap-3">
@@ -754,8 +769,8 @@ function WorkerApp({ onLogout }: { onLogout: () => void; key?: string }) {
             <Bell className="w-5 h-5" />
             <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-slate-100"></span>
           </button>
-          <button onClick={onLogout} className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600">
-            <Menu className="w-5 h-5" />
+          <button onClick={onLogout} className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors">
+            <LogOut className="w-5 h-5" />
           </button>
         </div>
       </div>
